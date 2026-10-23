@@ -1,0 +1,41 @@
+# Copy to autobuild.toml and edit. ${VAR} references are expanded from the environment.
+
+[settings]
+workdir = "./data/repos"          # where repos are cloned
+state_file = "./data/state.json"  # last built commit per repo
+poll_interval = 60                # seconds between change checks (per repo, overridable)
+build_timeout = 3600              # seconds
+prune_after_push = false          # delete local images after a successful push
+
+# Optional HTTP server for GitHub webhooks (instant builds) and manual triggers.
+webhook_port = 8080               # 0 disables it
+webhook_host = "0.0.0.0"
+webhook_secret_env = "WEBHOOK_SECRET"
+
+# Registries to `docker login` to at startup. Passwords/tokens come from env vars.
+[[registry]]
+server = "ghcr.io"
+username = "${GHCR_USER}"
+password_env = "GHCR_TOKEN"       # PAT with write:packages
+
+# [[registry]]
+# server = "docker.io"
+# username = "myuser"
+# password_env = "DOCKERHUB_TOKEN"
+
+# One [[repo]] block per repository to watch.
+[[repo]]
+name = "my-app"                                   # unique id (used for /trigger/<name>)
+url = "https://github.com/OWNER/my-app.git"
+branch = "main"
+image = "ghcr.io/OWNER/my-app"                    # where the image is pushed
+dockerfile = "Dockerfile"                         # relative to context
+context = "."                                     # relative to repo root
+# Placeholders: {sha} (7 chars), {full_sha}, {branch}, {timestamp} (UTC YYYYmmddHHMMSS)
+tags = ["latest", "{sha}", "{branch}"]
+token_env = "GITHUB_TOKEN"                        # only needed for private repos
+# poll_interval = 300
+# build_args = { APP_ENV = "production" }
+# platforms = ["linux/amd64", "linux/arm64"]      # multi-arch via buildx
+# push = true
+# webhook_secret_env = "MY_APP_WEBHOOK_SECRET"    # per-repo override
