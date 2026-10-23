@@ -26,9 +26,9 @@ password_env = "GHCR_TOKEN"       # PAT with write:packages
 # One [[repo]] block per repository to watch.
 [[repo]]
 name = "my-app"                                   # unique id (used for /trigger/<name>)
-url = "https://github.com/OWNER/my-app.git"
+url = "https://github.com/imsda/my-app.git"
 branch = "main"
-image = "ghcr.io/OWNER/my-app"                    # where the image is pushed
+image = "ghcr.io/imsda/my-app"                    # GHCR names must be lowercase
 dockerfile = "Dockerfile"                         # relative to context
 context = "."                                     # relative to repo root
 # Placeholders: {sha} (7 chars), {full_sha}, {branch}, {timestamp} (UTC YYYYmmddHHMMSS)
