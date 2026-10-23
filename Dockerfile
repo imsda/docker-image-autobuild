@@ -18,7 +18,6 @@ ENV PYTHONUNBUFFERED=1 \
     AUTOBUILD_CONFIG=/config/autobuild.toml
 VOLUME ["/data"]
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import os,urllib.request; p=os.environ.get('HEALTH_PORT','8080'); urllib.request.urlopen(f'http://127.0.0.1:{p}/healthz')" || exit 1
 
 ENTRYPOINT ["python", "-m", "autobuild"]
 CMD ["run"]

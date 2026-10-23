@@ -1,4 +1,6 @@
-# Copy to autobuild.toml and edit. ${VAR} references are expanded from the environment.
+# Easiest: run `python -m autobuild init` and answer the questions.
+# Or copy this to autobuild.toml and edit. ${VAR} references are expanded from the environment.
+# Secrets can also live in autobuild.secrets.env (KEY=value lines) next to the config.
 
 [settings]
 workdir = "./data/repos"          # where repos are cloned
@@ -15,25 +17,25 @@ webhook_secret_env = "WEBHOOK_SECRET"
 # Registries to `docker login` to at startup. Passwords/tokens come from env vars.
 [[registry]]
 server = "ghcr.io"
-username = "${GHCR_USER}"
-password_env = "GHCR_TOKEN"       # PAT with write:packages
+username = "OWNER"
+password_env = "REGISTRY_PASSWORD"  # GHCR: token with write:packages
 
 # [[registry]]
 # server = "docker.io"
 # username = "myuser"
-# password_env = "DOCKERHUB_TOKEN"
+# password_env = "REGISTRY_PASSWORD"
 
 # One [[repo]] block per repository to watch.
 [[repo]]
 name = "my-app"                                   # unique id (used for /trigger/<name>)
-url = "https://github.com/imsda/my-app.git"
+url = "https://github.com/OWNER/my-app.git"
 branch = "main"
-image = "ghcr.io/imsda/my-app"                    # GHCR names must be lowercase
+image = "ghcr.io/OWNER/my-app"                    # where the image is pushed
 dockerfile = "Dockerfile"                         # relative to context
 context = "."                                     # relative to repo root
 # Placeholders: {sha} (7 chars), {full_sha}, {branch}, {timestamp} (UTC YYYYmmddHHMMSS)
 tags = ["latest", "{sha}", "{branch}"]
-token_env = "GITHUB_TOKEN"                        # only needed for private repos
+token_env = "GIT_TOKEN"                           # only needed for private repos
 # poll_interval = 300
 # build_args = { APP_ENV = "production" }
 # platforms = ["linux/amd64", "linux/arm64"]      # multi-arch via buildx

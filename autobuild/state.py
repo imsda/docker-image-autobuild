@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import threading
@@ -18,6 +19,17 @@ class State:
                 self._data = json.loads(self.path.read_text())
             except json.JSONDecodeError:
                 self._data = {}
+
+    def acquire_lock(self) -> bool:
+        """Take an exclusive lock so two instances never share one state file."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock_file = open(self.path.with_suffix(".lock"), "w")
+        try:
+            fcntl.flock(self._lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            self._lock_file.close()
+            return False
+        return True
 
     def get(self, name: str) -> dict:
         with self._lock:

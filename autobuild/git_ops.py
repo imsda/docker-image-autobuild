@@ -35,6 +35,16 @@ def remote_head(url: str, branch: str, token: str | None = None) -> str:
     return sha
 
 
+def default_branch(url: str, token: str | None = None) -> str:
+    """Return the remote's default branch name (what HEAD points at)."""
+    out = run(["git", *_auth_args(token), "ls-remote", "--symref", url, "HEAD"],
+              timeout=60, secrets=_secrets(token))
+    for line in out.splitlines():
+        if line.startswith("ref: refs/heads/") and line.endswith("HEAD"):
+            return line.split()[1].removeprefix("refs/heads/")
+    raise RuntimeError(f"could not determine default branch of {url}")
+
+
 def sync(url: str, branch: str, dest: Path, sha: str, token: str | None = None) -> str:
     """Clone or update `dest` to exactly `sha` (on `branch`). Returns the checked-out SHA."""
     auth, secrets = _auth_args(token), _secrets(token)

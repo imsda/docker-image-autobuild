@@ -109,7 +109,10 @@ class PipelineTest(unittest.TestCase):
         self.log.unlink()
         self.assertFalse(self.builder.check(self.repo))  # within backoff window
         self.assertEqual(self.calls(), [])
+        # A fresh process (restart) retries right away despite the backoff.
         os.environ["FAKE_DOCKER_EXIT"] = "0"
+        self.assertTrue(Builder(self.config, self.state).check(self.repo))
+        self.state.update("app", built_sha=None)
         self.assertTrue(self.builder.check(self.repo, force=True))
         self.assertEqual(self.state.get("app")["failures"], 0)
 

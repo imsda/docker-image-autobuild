@@ -19,6 +19,7 @@ class Builder:
     def __init__(self, config: Config, state: State):
         self.config = config
         self.state = state
+        self._seen: set[str] = set()  # repos checked since startup
 
     def check(self, repo: Repo, force: bool = False) -> bool:
         """Build `repo` if its branch moved since the last successful build.
@@ -38,7 +39,11 @@ class Builder:
             if sha == st.get("built_sha"):
                 log.debug("[%s] up to date at %s", repo.name, sha[:7])
                 return False
-            if sha == st.get("failed_sha") and time.time() < st.get("retry_after", 0):
+            # A restart retries immediately (the user may have fixed the cause).
+            first_check = repo.name not in self._seen
+            self._seen.add(repo.name)
+            if (sha == st.get("failed_sha") and not first_check
+                    and time.time() < st.get("retry_after", 0)):
                 log.debug("[%s] %s failed previously; waiting for backoff", repo.name, sha[:7])
                 return False
 

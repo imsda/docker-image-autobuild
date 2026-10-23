@@ -15,47 +15,82 @@ image** to your registry (GHCR, Docker Hub, or any other registry).
 - Private repos via token (sent as an HTTP header, never written to disk)
 - Only the Python standard library, nothing to `pip install`
 
-## Quick start (Docker Compose)
+## Quick start
+
+On first run, autobuild asks where to pull from and where to push to, so you don't
+need to edit any files:
+
+```text
+$ python -m autobuild
+Welcome to docker-image-autobuild. Let's set things up.
+Push images to a registry? (choose 'n' to only build locally) (Y/n):
+Registry:
+  1) GitHub Container Registry
+  2) Docker Hub
+  3) Other / self-hosted registry
+Choose [1]:
+Username for ghcr.io: octocat
+Password/token for ghcr.io (leave blank to set $REGISTRY_PASSWORD yourself):
+Image namespace (images are pushed as <namespace>/<repo>) [ghcr.io/octocat]:
+
+== Which repositories should be watched? ==
+Repository to watch (owner/repo or git URL): octocat/my-app
+  Checking https://github.com/octocat/my-app.git ...
+  OK, default branch is 'main'.
+...
+```
+
+The wizard checks that each repo is reachable, finds its default branch, asks for a
+token if the repo is private, and then writes `autobuild.toml`. Tokens are stored
+separately in `autobuild.secrets.env` with `0600` permissions, never in the config.
+After that it starts watching.
+
+- `python -m autobuild init` runs the setup again
+- `python -m autobuild add-repo` watches another repo
+
+### With Docker Compose
 
 ```bash
-cp autobuild.example.toml autobuild.toml   # add your repos, images and registries
-cp .env.example .env                       # add your tokens
+docker compose run --rm autobuild init   # one-time interactive setup, saved to ./config
 docker compose up -d --build
 docker compose logs -f
 ```
 
 The container uses the host's Docker daemon through `/var/run/docker.sock`.
 
-## Running it without Docker
+### Without Docker
 
 You need Python 3.11+, `git`, and the `docker` CLI.
 
 ```bash
-export GHCR_USER=me GHCR_TOKEN=ghp_... WEBHOOK_SECRET=...
-python -m autobuild -c autobuild.toml run          # watch forever
-python -m autobuild -c autobuild.toml once         # check everything once, build what changed
-python -m autobuild -c autobuild.toml once --force my-app   # rebuild one repo now
-python -m autobuild -c autobuild.toml status       # last build per repo
-python -m autobuild -c autobuild.toml check-config
+python -m autobuild                # first run: setup, then watch forever
+python -m autobuild run            # watch forever
+python -m autobuild once           # check every repo once, build what changed, exit
+python -m autobuild once --force my-app   # rebuild one repo now
+python -m autobuild status         # last build per repo
+python -m autobuild check-config
 ```
 
 `once` works well from cron or a systemd timer if you'd rather not run a daemon.
+Only one instance can use a given state file at a time.
 
 ## Configuration
 
-See [`autobuild.example.toml`](autobuild.example.toml) for every option. A minimal setup:
+The wizard covers the common cases. For everything else (build args, multi-arch
+`platforms`, custom tags, per-repo poll intervals), edit `autobuild.toml` directly.
+[`autobuild.example.toml`](autobuild.example.toml) documents every option. A minimal setup:
 
 ```toml
 [[registry]]
 server = "ghcr.io"
-username = "${GHCR_USER}"
-password_env = "GHCR_TOKEN"
+username = "octocat"
+password_env = "REGISTRY_PASSWORD"
 
 [[repo]]
 name = "my-app"
-url = "https://github.com/OWNER/my-app.git"
+url = "https://github.com/octocat/my-app.git"
 branch = "main"
-image = "ghcr.io/owner/my-app"
+image = "ghcr.io/octocat/my-app"
 tags = ["latest", "{sha}"]
 ```
 
@@ -64,16 +99,20 @@ Characters that aren't valid in tags are replaced, so `feature/x` becomes `featu
 
 ### Tokens
 
-| Purpose | Token |
+Secrets are read from environment variables. Any that aren't set are loaded from
+`autobuild.secrets.env` next to the config, which is the file the wizard writes.
+
+| Variable | Purpose |
 |---|---|
-| Push to GHCR | PAT with `write:packages` (`password_env`) |
-| Push to Docker Hub | Access token with Read & Write (`password_env`) |
-| Pull a private repo | PAT / fine-grained token with Contents: read (`token_env`) |
+| `REGISTRY_PASSWORD` | Push to the registry. GHCR: token with `write:packages`. Docker Hub: access token with Read & Write |
+| `GIT_TOKEN` | Pull private repos. GitHub: `repo` scope, or fine-grained with Contents: read |
+| `WEBHOOK_SECRET` | Verifies GitHub webhooks and protects `/trigger` |
 
 ## Webhooks (optional, for instant builds)
 
-Set `webhook_port` (for example `8080`) and `webhook_secret_env`, then add a webhook in
-GitHub under **Settings → Webhooks**:
+Say yes to webhooks during setup (or set `webhook_port` and `webhook_secret_env`).
+The wizard generates a secret and prints these settings. Add a webhook in GitHub under
+**Settings → Webhooks**:
 
 - Payload URL: `http://your-host:8080/webhook`
 - Content type: `application/json`

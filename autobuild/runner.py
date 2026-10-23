@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import threading
 
@@ -34,10 +35,11 @@ def run(
         return text
 
     log.debug("$ %s", redact(" ".join(cmd)))
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}  # fail instead of prompting for creds
     if not stream:
         try:
             p = subprocess.run(
-                cmd, cwd=cwd, input=input, capture_output=True, text=True, timeout=timeout
+                cmd, cwd=cwd, input=input, capture_output=True, text=True, timeout=timeout, env=env
             )
         except subprocess.TimeoutExpired:
             raise CommandError(cmd, -1, f"timed out after {timeout}s") from None
@@ -49,7 +51,7 @@ def run(
     # Streaming mode: forward output line by line to the log (for long builds).
     lines: list[str] = []
     proc = subprocess.Popen(
-        cmd, cwd=cwd, stdin=subprocess.PIPE if input else subprocess.DEVNULL,
+        cmd, cwd=cwd, env=env, stdin=subprocess.PIPE if input else subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
     )
     if input:
